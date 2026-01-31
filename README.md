@@ -52,6 +52,16 @@ ctest --test-dir build/release --output-on-failure
 ./build/release/examples/basic_example
 ```
 
+### Helper Script
+
+For convenience, you can use the provided `cayene.sh` script:
+
+```bash
+./cayene.sh build      # Build release version
+./cayene.sh test       # Run all tests
+./cayene.sh format     # Format code
+```
+
 ## Usage
 
 ### Basic Decoding
