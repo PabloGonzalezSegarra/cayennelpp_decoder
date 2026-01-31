@@ -46,6 +46,7 @@ cmake --build build/release
 
 # Test
 ctest --test-dir build/release --output-on-failure
+# Result: 100% tests passed, 0 tests failed out of 71
 
 # Run example
 ./build/release/examples/basic_example
