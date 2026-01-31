@@ -11,7 +11,6 @@
 
 #include <cstddef>
 #include <cstdint>
-#include <expected>
 #include <functional>
 #include <span>
 #include <string>
@@ -56,10 +55,12 @@ public:
      * @brief Decode a Cayene LPP encoded payload
      *
      * @param encoded_payload The raw payload bytes to decode
-     * @return Expected containing the decoded JSON or an error
+     * @return Decoded JSON object
+     * @throws PayloadEmptyException if payload is empty
+     * @throws UnknownDataTypeException if unknown data type encountered
+     * @throws BadPayloadFormatException if payload format is invalid
      */
-    [[nodiscard]] auto decode(std::span<const std::uint8_t> encoded_payload)
-        -> std::expected<Json, Error>;
+    [[nodiscard]] auto decode(std::span<const std::uint8_t> encoded_payload) -> Json;
 
     /**
      * @brief Register a custom data type

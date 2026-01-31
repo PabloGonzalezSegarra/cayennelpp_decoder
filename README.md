@@ -1,14 +1,15 @@
 # Cayene Decoder
 
-A modern C++26 library for decoding Cayene LPP (Low Power Payload) format, commonly used in LoRaWAN sensor networks.
+A modern C++20 library for decoding Cayene LPP (Low Power Payload) format, commonly used in LoRaWAN sensor networks.
 
 ## Features
 
 - **Full Cayene LPP v1 Support** — Decode all 12 standard sensor types
 - **Custom Type Registration** — Extend with proprietary sensor types  
-- **Modern C++26** — Uses `std::expected`, `std::span`, and `std::print`
-- **Type-Safe** — Strong typing with explicit error handling
+- **Modern C++20** — Uses `std::span`, standard exceptions, and modern idioms
+- **Type-Safe** — Strong typing with exception-based error handling
 - **Header-Only Friendly** — Single library target, easy integration
+- **Zero External Dependencies** — Only requires nlohmann/json (header-only)
 
 ## Supported Data Types
 
@@ -29,9 +30,10 @@ A modern C++26 library for decoding Cayene LPP (Low Power Payload) format, commo
 
 ## Requirements
 
-- **Compiler**: Clang 18+ with C++26 support
+- **Compiler**: Clang 16+ or GCC 11+ with C++20 support
 - **Build System**: CMake 3.25+
-- **Build Tool**: Ninja (recommended)
+- **Build Tool**: Ninja (recommended) or Make
+- **Architecture**: x86_64, ARM64 (Raspberry Pi compatible)
 
 ## Quick Start
 
@@ -55,7 +57,7 @@ ctest --test-dir build/release --output-on-failure
 
 ```cpp
 #include <cayene/decoder.hpp>
-#include <print>
+#include <iostream>
 
 int main() {
     cayene::Decoder decoder;
@@ -66,11 +68,12 @@ int main() {
         0x02, 0x68, 0x02, 0x58   // Ch2, Humidity
     };
     
-    auto result = decoder.decode(payload);
-    
-    if (result) {
-        std::println("{}", result.value().dump(2));
+    try {
+        auto result = decoder.decode(payload);
+        std::cout << result.dump(2) << "\n";
         // {"Humidity_2": 60.0, "Temperature_1": 27.2}
+    } catch (const cayene::DecoderException& e) {
+        std::cerr << "Error: " << e.what() << "\n";
     }
 }
 ```
@@ -80,10 +83,10 @@ int main() {
 ```cpp
 // Register a battery voltage sensor (2 bytes, millivolts)
 decoder.add_custom_type(
-    0xFE, "Battery", 2,
+    0xA0, "Battery", 2,
     [](std::span<const std::uint8_t> data) -> cayene::Json {
-        auto mv = (static_cast<unsigned>(data[0]) << 8) | data[1];
-        return cayene::Json(mv / 1000.0);  // Convert to volts
+        auto mv = (static_cast<uint16_t>(data[0]) << 8) | data[1];
+        return cayene::Json{{"voltage", mv / 1000.0}};  // Convert to volts
     }
 );
 ```
@@ -91,20 +94,17 @@ decoder.add_custom_type(
 ### Error Handling
 
 ```cpp
-auto result = decoder.decode(payload);
-
-if (!result) {
-    switch (result.error()) {
-        case cayene::Error::PayloadEmpty:
-            // Empty input
-            break;
-        case cayene::Error::UnknownDataType:
-            // Unregistered type ID
-            break;
-        case cayene::Error::BadPayloadFormat:
-            // Malformed or truncated payload
-            break;
-    }
+try {
+    auto result = decoder.decode(payload);
+    // Process result...
+} catch (const cayene::PayloadEmptyException& e) {
+    // Empty input
+} catch (const cayene::UnknownDataTypeException& e) {
+    // Unregistered type ID
+} catch (const cayene::BadPayloadFormatException& e) {
+    // Malformed or truncated payload
+} catch (const cayene::DecoderException& e) {
+    // Other errors
 }
 ```
 
@@ -114,17 +114,18 @@ if (!result) {
 
 | Method | Description |
 |--------|-------------|
-| `decode(span<const uint8_t>)` | Decode payload → `expected<Json, Error>` |
+| `decode(span<const uint8_t>)` | Decode payload → `Json` (throws on error) |
 | `add_custom_type(id, name, size, fn)` | Register custom type → `bool` |
 | `has_type(id)` | Check if type exists → `bool` |
 | `remove_custom_type(id)` | Remove custom type → `bool` |
 
-### `cayene::Error`
+### Exception Hierarchy
 
-| Value | Description |
-|-------|-------------|
-| `PayloadEmpty` | Empty payload provided |
-| `UnknownDataType` | Unregistered type ID encountered |
+| Exception | Description |
+|-----------|-------------|
+| `DecoderException` | Base class for all decoder errors |
+| `PayloadEmptyException` | Empty payload provided |
+| `UnknownDataTypeException` | Unregistered type ID encountered |
 | `BadPayloadFormat` | Incomplete or malformed payload |
 | `Unexpected` | Internal error |
 

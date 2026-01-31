@@ -1,20 +1,13 @@
 /**
  * @file basic_example.cpp
- * @brief Basic example demonstrating Cayene LPP decoding
- *
- * This example shows:
- * - How to decode standard Cayene LPP sensor payloads
- * - How to handle common sensor types (temperature, humidity, GPS, accelerometer)
- * - Basic error handling
- *
- * For advanced usage with custom types, see advanced_example.cpp
+ * @brief Basic usage examples of the Cayene Decoder library
  *
  * This library is licensed under the GNU General Public License v2 (GPLv2).
+ * See LICENSE file for details.
  */
 
 #include <cstdint>
-#include <cstdlib>
-#include <print>
+#include <iostream>
 #include <vector>
 
 #include "cayene/decoder.hpp"
@@ -28,7 +21,7 @@ int main()
     // =========================================================================
     // Example 1: Simple temperature reading
     // =========================================================================
-    std::println("=== Example 1: Temperature sensor ===\n");
+    std::cout << "=== Example 1: Temperature sensor ===\n\n";
 
     // Single temperature reading on channel 1: 27.2°C
     // Format: [channel] [type=0x67] [value_high] [value_low]
@@ -36,122 +29,138 @@ int main()
         0x01, 0x67, 0x01, 0x10  // Ch1, Temperature: 272 -> 27.2°C
     };
 
-    auto result = decoder.decode(temp_payload);
-
-    if (result)
+    try
     {
-        std::println("Temperature reading:");
-        std::println("{}\n", result.value().dump(2));
+        auto result = decoder.decode(temp_payload);
+        std::cout << "Temperature reading:\n";
+        std::cout << result.dump(2) << "\n\n";
     }
-    else
+    catch (const DecoderException& e)
     {
-        std::println("Error: {}\n", static_cast<int>(result.error()));
+        std::cout << "Error: " << e.what() << "\n\n";
     }
 
     // =========================================================================
     // Example 2: Multi-sensor payload
     // =========================================================================
-    std::println("=== Example 2: Multi-sensor payload ===\n");
+    std::cout << "=== Example 2: Multi-sensor payload ===\n\n";
 
     // Multiple sensor readings in a single payload:
     // - Temperature on channel 1: 25.5°C
     // - Humidity on channel 2: 65.0%
-    // - Barometer on channel 3: 1013.5 hPa
+    // - Barometer on channel 3: 1011.1 hPa
     std::vector<std::uint8_t> multi_sensor_payload = {
         0x01, 0x67, 0x00, 0xFF,  // Ch1, Temperature: 255 -> 25.5°C
         0x02, 0x68, 0x02, 0x8A,  // Ch2, Humidity: 650 -> 65.0%
         0x03, 0x73, 0x27, 0x7F   // Ch3, Barometer: 10111 -> 1011.1 hPa
     };
 
-    result = decoder.decode(multi_sensor_payload);
-
-    if (result)
+    try
     {
-        std::println("Multi-sensor readings:");
-        std::println("{}\n", result.value().dump(2));
+        auto result = decoder.decode(multi_sensor_payload);
+        std::cout << "Multi-sensor readings:\n";
+        std::cout << result.dump(2) << "\n\n";
+    }
+    catch (const DecoderException& e)
+    {
+        std::cout << "Error: " << e.what() << "\n\n";
     }
 
     // =========================================================================
     // Example 3: GPS coordinates
     // =========================================================================
-    std::println("=== Example 3: GPS location ===\n");
+    std::cout << "=== Example 3: GPS location ===\n\n";
 
     // GPS payload: Latitude 40.3512°, Longitude -1.4762°, Altitude 640m
     // Format: [channel] [type=0x88] [lat:3bytes] [lon:3bytes] [alt:3bytes]
     std::vector<std::uint8_t> gps_payload = {
-        0x01, 0x88,        // Ch1, GPS type
-        0x06, 0x28, 0x38,  // Latitude: 403512 -> 40.3512°
-        0xFF, 0xC6, 0x56,  // Longitude: -14762 -> -1.4762°
-        0x00, 0xFA, 0x00   // Altitude: 64000 -> 640.00m
+        0x01, 0x88,        // Ch1, GPS
+        0x06, 0x19, 0x48,  // Latitude: 40.3512°
+        0xF9, 0xCC, 0xE6,  // Longitude: -1.4762°
+        0x00, 0x09, 0xC4   // Altitude: 2500 -> 25.00m (scaled by 0.01)
     };
 
-    result = decoder.decode(gps_payload);
-
-    if (result)
+    try
     {
-        std::println("GPS location:");
-        std::println("{}\n", result.value().dump(2));
+        auto result = decoder.decode(gps_payload);
+        std::cout << "GPS location:\n";
+        std::cout << result.dump(2) << "\n\n";
 
-        // Access individual fields
-        const auto& gps = result.value()["GPS_1"];
-        std::println("  Latitude:  {:.4f}°", gps["latitude"].get<double>());
-        std::println("  Longitude: {:.4f}°", gps["longitude"].get<double>());
-        std::println("  Altitude:  {:.2f}m\n", gps["altitude"].get<double>());
+        const auto& gps = result["GPS_1"];
+        std::cout << "  Latitude:  " << gps["latitude"].get<double>() << "°\n";
+        std::cout << "  Longitude: " << gps["longitude"].get<double>() << "°\n";
+        std::cout << "  Altitude:  " << gps["altitude"].get<double>() << "m\n\n";
+    }
+    catch (const DecoderException& e)
+    {
+        std::cout << "Error: " << e.what() << "\n\n";
     }
 
     // =========================================================================
-    // Example 4: Accelerometer data
+    // Example 4: Accelerometer
     // =========================================================================
-    std::println("=== Example 4: Accelerometer ===\n");
+    std::cout << "=== Example 4: Accelerometer ===\n\n";
 
-    // Accelerometer reading: x=0.5G, y=-0.3G, z=1.0G
+    // Accelerometer on channel 1: x=0.5g, y=-0.3g, z=1.0g
     // Format: [channel] [type=0x71] [x:2bytes] [y:2bytes] [z:2bytes]
     std::vector<std::uint8_t> accel_payload = {
-        0x01, 0x71,  // Ch1, Accelerometer type
-        0x01, 0xF4,  // X: 500 -> 0.500 G
-        0xFE, 0xD4,  // Y: -300 -> -0.300 G
-        0x03, 0xE8   // Z: 1000 -> 1.000 G
+        0x01, 0x71,  // Ch1, Accelerometer
+        0x01, 0xF4,  // x = 500 -> 0.5g
+        0xFF, 0xD8,  // y = -40 -> -0.04g (signed)
+        0x03, 0xE8   // z = 1000 -> 1.0g
     };
 
-    result = decoder.decode(accel_payload);
-
-    if (result)
+    try
     {
-        std::println("Accelerometer reading:");
-        std::println("{}\n", result.value().dump(2));
+        auto result = decoder.decode(accel_payload);
+        std::cout << "Accelerometer reading:\n";
+        std::cout << result.dump(2) << "\n\n";
+    }
+    catch (const DecoderException& e)
+    {
+        std::cout << "Error: " << e.what() << "\n\n";
     }
 
     // =========================================================================
     // Example 5: Error handling
     // =========================================================================
-    std::println("=== Example 5: Error handling ===\n");
+    std::cout << "=== Example 5: Error handling ===\n\n";
 
-    // Empty payload
-    std::vector<std::uint8_t> empty_payload;
-    result = decoder.decode(empty_payload);
-    if (!result)
+    // Empty payload (should throw PayloadEmptyException)
+    std::vector<std::uint8_t> empty_payload = {};
+
+    try
     {
-        std::println("Empty payload error: {} (PayloadEmpty)", static_cast<int>(result.error()));
+        auto result = decoder.decode(empty_payload);
+        std::cout << "Should not reach here!\n";
+    }
+    catch (const PayloadEmptyException& e)
+    {
+        std::cout << "Empty payload error: " << e.what() << "\n\n";
+    }
+    catch (const DecoderException& e)
+    {
+        std::cout << "Other error: " << e.what() << "\n\n";
     }
 
-    // Unknown type (0xFF is not a standard Cayene LPP type)
-    std::vector<std::uint8_t> unknown_type_payload = {0x01, 0xFF, 0x00};
-    result = decoder.decode(unknown_type_payload);
-    if (!result)
+    // Bad payload format (incomplete)
+    std::vector<std::uint8_t> bad_payload = {
+        0x01, 0x67, 0x01  // Temperature but missing one byte
+    };
+
+    try
     {
-        std::println("Unknown type error: {} (UnknownDataType)", static_cast<int>(result.error()));
+        auto result = decoder.decode(bad_payload);
+        std::cout << "Should not reach here!\n";
+    }
+    catch (const BadPayloadFormatException& e)
+    {
+        std::cout << "Bad format error: " << e.what() << "\n\n";
+    }
+    catch (const DecoderException& e)
+    {
+        std::cout << "Other error: " << e.what() << "\n\n";
     }
 
-    // Incomplete payload (temperature needs 2 data bytes, only 1 provided)
-    std::vector<std::uint8_t> incomplete_payload = {0x01, 0x67, 0x00};
-    result = decoder.decode(incomplete_payload);
-    if (!result)
-    {
-        std::println("Incomplete payload error: {} (BadPayloadFormat)",
-                     static_cast<int>(result.error()));
-    }
-
-    std::println("\n=== Basic example completed ===");
-
-    return EXIT_SUCCESS;
+    return 0;
 }

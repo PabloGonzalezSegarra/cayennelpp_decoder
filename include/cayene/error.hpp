@@ -9,19 +9,73 @@
  * See LICENSE file for details.
  */
 
-#include <cstdint>
+#include <stdexcept>
+#include <string>
 
 namespace cayene
 {
 
-enum class Error : std::uint8_t
+/**
+ * @brief Base exception for Cayene decoder errors
+ */
+class DecoderException : public std::runtime_error
 {
-    None = 0,
-    Unexpected = 1,
-    UnknownDataType = 2,
-    BadPayloadFormat = 3,
-    PayloadEmpty = 4
+public:
+    explicit DecoderException(const std::string& message) : std::runtime_error(message) {}
 };
-}
+
+/**
+ * @brief Exception thrown when payload is empty
+ */
+class PayloadEmptyException : public DecoderException
+{
+public:
+    PayloadEmptyException() : DecoderException("Payload is empty") {}
+};
+
+/**
+ * @brief Exception thrown when data type is unknown
+ */
+class UnknownDataTypeException : public DecoderException
+{
+public:
+    explicit UnknownDataTypeException(unsigned char type)
+        : DecoderException("Unknown data type: 0x" + to_hex(type))
+    {
+    }
+
+private:
+    static std::string to_hex(unsigned char c)
+    {
+        const char* hex = "0123456789ABCDEF";
+        return std::string() + hex[c >> 4] + hex[c & 0xF];
+    }
+};
+
+/**
+ * @brief Exception thrown when payload format is invalid
+ */
+class BadPayloadFormatException : public DecoderException
+{
+public:
+    explicit BadPayloadFormatException(const std::string& reason)
+        : DecoderException("Bad payload format: " + reason)
+    {
+    }
+};
+
+/**
+ * @brief Exception thrown for unexpected errors
+ */
+class UnexpectedException : public DecoderException
+{
+public:
+    explicit UnexpectedException(const std::string& reason)
+        : DecoderException("Unexpected error: " + reason)
+    {
+    }
+};
+
+}  // namespace cayene
 
 #endif  // CAYENE_DECODER_ERROR_HPP

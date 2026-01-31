@@ -30,11 +30,11 @@ Decoder::Decoder()
 
 Decoder::~Decoder() = default;
 
-auto Decoder::decode(std::span<const std::uint8_t> encoded_payload) -> std::expected<Json, Error>
+auto Decoder::decode(std::span<const std::uint8_t> encoded_payload) -> Json
 {
     if (encoded_payload.empty())
     {
-        return std::unexpected(Error::PayloadEmpty);
+        throw PayloadEmptyException();
     }
 
     std::size_t current_index = 0;
@@ -48,7 +48,7 @@ auto Decoder::decode(std::span<const std::uint8_t> encoded_payload) -> std::expe
         // If the data type is not registered
         if (!data_types_.contains(type_id))
         {
-            return std::unexpected(Error::UnknownDataType);
+            throw UnknownDataTypeException(type_id);
         }
 
         const DataType& data_type = data_types_.at(type_id);
@@ -56,7 +56,7 @@ auto Decoder::decode(std::span<const std::uint8_t> encoded_payload) -> std::expe
         // If remaining bytes are less than required by the data type
         if (current_index + data_type.size > encoded_payload.size())
         {
-            return std::unexpected(Error::BadPayloadFormat);
+            throw BadPayloadFormatException("Insufficient bytes for data type");
         }
 
         const auto data_span = encoded_payload.subspan(current_index, data_type.size);
@@ -70,7 +70,7 @@ auto Decoder::decode(std::span<const std::uint8_t> encoded_payload) -> std::expe
             }
             else
             {
-                return std::unexpected(Error::Unexpected);
+                throw UnexpectedException("Custom type has no decoder function");
             }
             current_index += data_type.size;
             continue;
@@ -115,7 +115,7 @@ auto Decoder::decode(std::span<const std::uint8_t> encoded_payload) -> std::expe
                 decoded_json[key] = decode_gps(data_span);
                 break;
             default:
-                return std::unexpected(Error::UnknownDataType);
+                throw UnknownDataTypeException(type_id);
         }
 
         current_index += data_type.size;
@@ -124,7 +124,7 @@ auto Decoder::decode(std::span<const std::uint8_t> encoded_payload) -> std::expe
     // If there are unprocessed bytes remaining
     if (current_index != encoded_payload.size())
     {
-        return std::unexpected(Error::BadPayloadFormat);
+        throw BadPayloadFormatException("Unprocessed bytes remaining");
     }
 
     return decoded_json;
