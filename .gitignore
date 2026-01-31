@@ -9,6 +9,8 @@ out/
 *.swp
 *.swo
 *~
+.cache/
+.clangd/
 
 # Compiled files
 *.o
@@ -54,3 +56,6 @@ latex/
 secrets/
 .env
 .env.*
+
+# Editor - already covered above
+

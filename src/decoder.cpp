@@ -13,7 +13,7 @@
 #include <span>
 #include <utility>
 
-#include "cayene_v1_defintions.hpp"
+#include "cayene_v1_definitions.hpp"
 
 namespace cayene
 {
@@ -139,6 +139,11 @@ bool Decoder::add_custom_type(std::uint8_t type_id, std::string name, std::size_
     }
 
     if (!decoder_function)
+    {
+        return false;
+    }
+
+    if (size == 0)
     {
         return false;
     }

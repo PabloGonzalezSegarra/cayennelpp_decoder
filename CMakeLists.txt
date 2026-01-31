@@ -121,6 +121,17 @@ target_link_libraries(cayene_decoder
 add_library(cayene::decoder ALIAS cayene_decoder)
 
 # ============================================================================
+# IntelliSense Support - Auto-update compile_commands.json symlink
+# ============================================================================
+add_custom_target(update_compile_commands ALL
+    COMMAND ${CMAKE_COMMAND} -E create_symlink
+        ${CMAKE_BINARY_DIR}/compile_commands.json
+        ${CMAKE_SOURCE_DIR}/compile_commands.json
+    COMMENT "Updating compile_commands.json symlink for IntelliSense"
+    VERBATIM
+)
+
+# ============================================================================
 # Tests
 # ============================================================================
 if(CAYENE_BUILD_TESTS)

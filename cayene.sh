@@ -1,12 +1,13 @@
 #!/bin/bash
 
 # Script de utilidad para trabajar con el proyecto Cayene Decoder
-# Uso: ./cayene.sh [comando]
+# Uso: ./cayene.sh [comando] [debug|release]
 
 set -e  # Salir si hay errores
 
-PROJECT_ROOT="/home/pablo/Desktop/muicr/rsa/proyecto/cayene_decoder"
-BUILD_TYPE="${BUILD_TYPE:-release}"  # Por defecto release
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+PROJECT_ROOT="${SCRIPT_DIR}"
+BUILD_TYPE="${BUILD_TYPE:-release}"
 
 # Colores para output
 RED='\033[0;31m'
@@ -15,7 +16,7 @@ YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
 function print_usage() {
-    echo "Uso: $0 [comando]"
+    echo "Uso: $0 [comando] [debug|release]"
     echo ""
     echo "Comandos disponibles:"
     echo "  configure [debug|release]  - Configurar el proyecto con CMake"
@@ -25,12 +26,12 @@ function print_usage() {
     echo "  clean                      - Limpiar archivos de build"
     echo "  rebuild [debug|release]    - Limpiar y recompilar"
     echo "  format                     - Formatear código con clang-format"
-    echo "  tidy                       - Analizar código con clang-tidy"
+    echo "  tidy [debug|release]       - Analizar código con clang-tidy"
     echo ""
     echo "Ejemplos:"
     echo "  $0 build release"
-    echo "  $0 test"
-    echo "  $0 run debug"
+    echo "  $0 test debug"
+    echo "  $0 run"
 }
 
 function configure_project() {
@@ -46,6 +47,7 @@ function build_project() {
     echo -e "${YELLOW}Compilando proyecto (${build_type})...${NC}"
     cd "$PROJECT_ROOT"
     cmake --build "build/$build_type"
+    cmake --build "build/$build_type" --target update_compile_commands
     echo -e "${GREEN}✓ Compilación completa${NC}"
 }
 
@@ -53,13 +55,32 @@ function test_project() {
     local build_type="${1:-$BUILD_TYPE}"
     echo -e "${YELLOW}Ejecutando tests (${build_type})...${NC}"
     cd "$PROJECT_ROOT"
-    ctest --preset "$build_type" --output-on-failure
+    
+    # Verificar que el directorio de build existe
+    if [ ! -d "build/$build_type" ]; then
+        echo -e "${YELLOW}Build no encontrado, compilando primero...${NC}"
+        configure_project "$build_type"
+        build_project "$build_type"
+    fi
+    
+    # Ejecutar tests usando ctest directamente desde el directorio de build
+    cd "build/$build_type"
+    ctest --output-on-failure
+    
+    echo -e "${GREEN}✓ Tests completados${NC}"
 }
 
 function run_example() {
     local build_type="${1:-$BUILD_TYPE}"
     echo -e "${YELLOW}Ejecutando ejemplo básico (${build_type})...${NC}"
     cd "$PROJECT_ROOT"
+    
+    if [ ! -f "build/$build_type/examples/basic_example" ]; then
+        echo -e "${YELLOW}Ejecutable no encontrado, compilando primero...${NC}"
+        configure_project "$build_type"
+        build_project "$build_type"
+    fi
+    
     "./build/$build_type/examples/basic_example"
 }
 
@@ -80,14 +101,21 @@ function rebuild_project() {
 function format_code() {
     echo -e "${YELLOW}Formateando código...${NC}"
     cd "$PROJECT_ROOT"
-    find . -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i
+    find src include examples tests -name "*.cpp" -o -name "*.hpp" | xargs clang-format -i
     echo -e "${GREEN}✓ Código formateado${NC}"
 }
 
 function tidy_code() {
-    echo -e "${YELLOW}Analizando código con clang-tidy...${NC}"
+    local build_type="${1:-$BUILD_TYPE}"
+    echo -e "${YELLOW}Analizando código con clang-tidy (${build_type})...${NC}"
     cd "$PROJECT_ROOT"
-    clang-tidy -p build/release src/*.cpp include/**/*.hpp
+    
+    if [ ! -f "build/$build_type/compile_commands.json" ]; then
+        echo -e "${YELLOW}compile_commands.json no encontrado, configurando primero...${NC}"
+        configure_project "$build_type"
+    fi
+    
+    clang-tidy -p "build/$build_type" src/*.cpp
     echo -e "${GREEN}✓ Análisis completo${NC}"
 }
 

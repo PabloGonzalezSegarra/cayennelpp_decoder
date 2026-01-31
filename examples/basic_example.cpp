@@ -76,12 +76,12 @@ int main()
     // =========================================================================
     std::println("=== Example 3: GPS location ===\n");
 
-    // GPS payload with fictional coordinates
+    // GPS payload: Latitude 40.3512°, Longitude -1.4762°, Altitude 640m
     // Format: [channel] [type=0x88] [lat:3bytes] [lon:3bytes] [alt:3bytes]
     std::vector<std::uint8_t> gps_payload = {
         0x01, 0x88,        // Ch1, GPS type
-        0x06, 0x28, 0x38,  // Latitude: 404536 -> 40.4536°
-        0xFF, 0xC6, 0x56,  // Longitude: -234922 -> -23.4922°
+        0x06, 0x28, 0x38,  // Latitude: 403512 -> 40.3512°
+        0xFF, 0xC6, 0x56,  // Longitude: -14762 -> -1.4762°
         0x00, 0xFA, 0x00   // Altitude: 64000 -> 640.00m
     };
 
