@@ -44,3 +44,13 @@ coverage/
 docs/_build/
 html/
 latex/
+
+# Sensitive data - never commit these
+*.pem
+*.key
+*.secret
+*.credentials
+*_live_data_*.json
+secrets/
+.env
+.env.*

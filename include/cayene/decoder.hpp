@@ -9,56 +9,108 @@
  * See LICENSE file for details.
  */
 
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <expected>
+#include <functional>
 #include <span>
+#include <string>
 #include <unordered_map>
 
 #include <nlohmann/json.hpp>
-#include <sys/types.h>
 
 #include "data_type.hpp"
 #include "error.hpp"
 
 namespace cayene
 {
-using namespace nlohmann;
+
 using Json = nlohmann::json;
 
+/**
+ * @brief Decoder function type for custom data types
+ *
+ * Takes a span of bytes and returns a JSON value.
+ */
+using DecoderFunction = std::function<Json(std::span<const std::uint8_t>)>;
+
+/**
+ * @brief Cayene LPP decoder
+ *
+ * Decodes Cayene LPP (Low Power Payload) format into JSON.
+ * Supports all standard data types and allows registering custom types.
+ */
 class Decoder
 {
-private:
-    std::unordered_map<uint8_t, DataType> data_types_;
-
 public:
     Decoder();
     ~Decoder();
 
-    auto decode(const std::span<uint8_t>& encoded_payload) -> std::expected<Json, Error>;
-    void add_data_type(uint8_t type_id, const std::string& name, std::size_t size);
+    // Non-copyable but moveable
+    Decoder(const Decoder&) = delete;
+    Decoder& operator=(const Decoder&) = delete;
+    Decoder(Decoder&&) noexcept = default;
+    Decoder& operator=(Decoder&&) noexcept = default;
+
+    /**
+     * @brief Decode a Cayene LPP encoded payload
+     *
+     * @param encoded_payload The raw payload bytes to decode
+     * @return Expected containing the decoded JSON or an error
+     */
+    [[nodiscard]] auto decode(std::span<const std::uint8_t> encoded_payload)
+        -> std::expected<Json, Error>;
+
+    /**
+     * @brief Register a custom data type
+     *
+     * @param type_id The type identifier (should not conflict with standard types)
+     * @param name Human-readable name for the data type
+     * @param size Number of bytes this type consumes
+     * @param decoder_function Function to decode the bytes into JSON
+     * @return true if registration succeeded, false if type_id already exists
+     */
+    bool add_custom_type(std::uint8_t type_id, std::string name, std::size_t size,
+                         DecoderFunction decoder_function);
+
+    /**
+     * @brief Check if a data type is registered
+     *
+     * @param type_id The type identifier to check
+     * @return true if the type is registered
+     */
+    [[nodiscard]] bool has_type(std::uint8_t type_id) const noexcept;
+
+    /**
+     * @brief Remove a custom data type
+     *
+     * @param type_id The type identifier to remove
+     * @return true if the type was removed, false if it was a standard type or didn't exist
+     */
+    bool remove_custom_type(std::uint8_t type_id);
 
 private:
-    static int16_t bytes_to_int16(const std::span<uint8_t>& data_span);
-    static uint16_t bytes_to_uint16(const std::span<uint8_t>& data_span);
-    static int32_t bytes_to_int24(const std::span<uint8_t>& data_span);
-    static uint32_t bytes_to_uint24(const std::span<uint8_t>& data_span);
+    std::unordered_map<std::uint8_t, DataType> data_types_;
 
-    // Decoding functions for standard data types
-    // Is assumed that the data_span passed to these functions has the correct size
-    static uint8_t decode_digital_input(const std::span<uint8_t>& data_span);
-    static uint8_t decode_digital_output(const std::span<uint8_t>& data_span);
-    static double decode_analog_input(const std::span<uint8_t>& data_span);
-    static double decode_analog_output(const std::span<uint8_t>& data_span);
-    static uint16_t decode_luminosity(const std::span<uint8_t>& data_span);
-    static uint8_t decode_presence(const std::span<uint8_t>& data_span);
-    static double decode_temperature(const std::span<uint8_t>& data_span);
-    static double decode_humidity(const std::span<uint8_t>& data_span);
-    static Json decode_accelerometer(const std::span<uint8_t>& data_span);
-    static double decode_barometer(const std::span<uint8_t>& data_span);
-    static double decode_gyrometer(const std::span<uint8_t>& data_span);
-    static Json decode_gps(const std::span<uint8_t>& data_span);
+    // Byte conversion utilities
+    [[nodiscard]] static std::int16_t bytes_to_int16(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static std::uint16_t bytes_to_uint16(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static std::int32_t bytes_to_int24(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static std::uint32_t bytes_to_uint24(std::span<const std::uint8_t> data_span);
+
+    // Standard type decoders
+    [[nodiscard]] static Json decode_digital_input(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_digital_output(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_analog_input(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_analog_output(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_luminosity(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_presence(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_temperature(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_humidity(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_accelerometer(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_barometer(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_gyrometer(std::span<const std::uint8_t> data_span);
+    [[nodiscard]] static Json decode_gps(std::span<const std::uint8_t> data_span);
 };
 
 }  // namespace cayene

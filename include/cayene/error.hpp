@@ -17,8 +17,8 @@ namespace cayene
 enum class Error : std::uint8_t
 {
     None = 0,
-    Unexcepted = 1,
-    UnkwownDataType = 2,
+    Unexpected = 1,
+    UnknownDataType = 2,
     BadPayloadFormat = 3,
     PayloadEmpty = 4
 };
