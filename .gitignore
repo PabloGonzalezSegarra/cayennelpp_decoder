@@ -59,3 +59,6 @@ secrets/
 
 # Editor - already covered above
 
+# CodeQL analysis
+_codeql_*/
+
