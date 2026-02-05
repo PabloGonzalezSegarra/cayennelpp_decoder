@@ -1,0 +1,5 @@
+if(EXISTS "/home/runner/work/cayennelpp_decoder/cayennelpp_decoder/_codeql_build_dir/tests/cayene_tests[1]_tests.cmake")
+  include("/home/runner/work/cayennelpp_decoder/cayennelpp_decoder/_codeql_build_dir/tests/cayene_tests[1]_tests.cmake")
+else()
+  add_test(cayene_tests_NOT_BUILT cayene_tests_NOT_BUILT)
+endif()
