@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build-and-test:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install dependencies
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y cmake ninja-build
+        
+    - name: Configure CMake
+      run: cmake --preset release
+      
+    - name: Build
+      run: cmake --build build/release
+      
+    - name: Run tests
+      run: ctest --test-dir build/release --output-on-failure
+
+  format-check:
+    name: Format Check
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Install clang-format
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y clang-format
+        
+    - name: Check formatting
+      run: |
+        # Only check files that are tracked by git
+        git ls-files 'src/*.cpp' 'src/*.hpp' 'include/**/*.cpp' 'include/**/*.hpp' 'tests/*.cpp' 'tests/*.hpp' 'examples/*.cpp' 'examples/*.hpp' | xargs clang-format --dry-run --Werror
