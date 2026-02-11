@@ -16,13 +16,13 @@
  * See LICENSE file for details.
  */
 
-#include "cayene/decoder.hpp"
-
 #include <cstdint>
 #include <limits>
 #include <vector>
 
 #include <gtest/gtest.h>
+
+#include "cayene/decoder.hpp"
 
 namespace cayene::test
 {
@@ -51,7 +51,8 @@ TEST_F(DecoderTest, UnknownDataType)
 
 TEST_F(DecoderTest, InsufficientBytes)
 {
-    std::vector<std::uint8_t> payload = {0x01, 0x67, 0x01};  // Temperature needs 2 bytes, only 1 provided
+    std::vector<std::uint8_t> payload = {0x01, 0x67,
+                                         0x01};  // Temperature needs 2 bytes, only 1 provided
     EXPECT_THROW(decoder_.decode(payload), BadPayloadFormatException);
 }
 
@@ -117,10 +118,10 @@ TEST_F(DecoderTest, Barometer)
 TEST_F(DecoderTest, GPS)
 {
     std::vector<std::uint8_t> payload = {
-        0x01, 0x88,           // GPS
-        0x06, 0x19, 0x48,     // Lat
-        0xF9, 0xCC, 0xE6,     // Lon
-        0x00, 0x09, 0xC4      // Alt
+        0x01, 0x88,        // GPS
+        0x06, 0x19, 0x48,  // Lat
+        0xF9, 0xCC, 0xE6,  // Lon
+        0x00, 0x09, 0xC4   // Alt
     };
     auto result = decoder_.decode(payload);
     EXPECT_TRUE(result["GPS_1"].contains("latitude"));
@@ -131,10 +132,10 @@ TEST_F(DecoderTest, GPS)
 TEST_F(DecoderTest, Accelerometer)
 {
     std::vector<std::uint8_t> payload = {
-        0x01, 0x71,       // Accelerometer
-        0x01, 0xF4,       // x
-        0xFF, 0xD8,       // y
-        0x03, 0xE8        // z
+        0x01, 0x71,  // Accelerometer
+        0x01, 0xF4,  // x
+        0xFF, 0xD8,  // y
+        0x03, 0xE8   // z
     };
     auto result = decoder_.decode(payload);
     EXPECT_TRUE(result["Accelerometer_1"].contains("x"));
@@ -179,8 +180,9 @@ TEST_F(DecoderTest, SameTypeMultipleChannels)
 TEST_F(DecoderTest, AddCustomType)
 {
     constexpr std::uint8_t kBatteryTypeId = 0xA0;
-    
-    auto battery_decoder = [](std::span<const std::uint8_t> data) -> Json {
+
+    auto battery_decoder = [](std::span<const std::uint8_t> data) -> Json
+    {
         const std::uint16_t raw = (static_cast<std::uint16_t>(data[0]) << 8) | data[1];
         return Json{{"voltage", raw / 1000.0}};
     };
@@ -193,8 +195,9 @@ TEST_F(DecoderTest, AddCustomType)
 TEST_F(DecoderTest, DecodeCustomType)
 {
     constexpr std::uint8_t kBatteryTypeId = 0xA0;
-    
-    auto battery_decoder = [](std::span<const std::uint8_t> data) -> Json {
+
+    auto battery_decoder = [](std::span<const std::uint8_t> data) -> Json
+    {
         const std::uint16_t raw = (static_cast<std::uint16_t>(data[0]) << 8) | data[1];
         return Json{{"voltage", raw / 1000.0}};
     };
@@ -209,10 +212,9 @@ TEST_F(DecoderTest, DecodeCustomType)
 TEST_F(DecoderTest, RemoveCustomType)
 {
     constexpr std::uint8_t kBatteryTypeId = 0xA0;
-    
-    auto battery_decoder = [](std::span<const std::uint8_t> data) -> Json {
-        return Json{{"value", data[0]}};
-    };
+
+    auto battery_decoder = [](std::span<const std::uint8_t> data) -> Json
+    { return Json{{"value", data[0]}}; };
 
     decoder_.add_custom_type(kBatteryTypeId, "Battery", 1, battery_decoder);
     EXPECT_TRUE(decoder_.has_type(kBatteryTypeId));
@@ -224,19 +226,19 @@ TEST_F(DecoderTest, RemoveCustomType)
 
 TEST_F(DecoderTest, CannotOverwriteStandardType)
 {
-    auto fake_decoder = [](std::span<const std::uint8_t>) -> Json {
-        return Json{{"fake", true}};
-    };
+    auto fake_decoder = [](std::span<const std::uint8_t>) -> Json { return Json{{"fake", true}}; };
 
-    bool added = decoder_.add_custom_type(0x67, "FakeTemp", 2, fake_decoder);  // 0x67 is Temperature
+    bool added =
+        decoder_.add_custom_type(0x67, "FakeTemp", 2, fake_decoder);  // 0x67 is Temperature
     EXPECT_FALSE(added);
 }
 
 TEST_F(DecoderTest, MixedStandardAndCustom)
 {
     constexpr std::uint8_t kBatteryTypeId = 0xA0;
-    
-    auto battery_decoder = [](std::span<const std::uint8_t> data) -> Json {
+
+    auto battery_decoder = [](std::span<const std::uint8_t> data) -> Json
+    {
         const std::uint16_t raw = (static_cast<std::uint16_t>(data[0]) << 8) | data[1];
         return Json{{"voltage", raw / 1000.0}};
     };
@@ -244,8 +246,8 @@ TEST_F(DecoderTest, MixedStandardAndCustom)
     decoder_.add_custom_type(kBatteryTypeId, "Battery", 2, battery_decoder);
 
     std::vector<std::uint8_t> payload = {
-        0x01, 0x67, 0x01, 0x10,           // Temperature
-        0x02, kBatteryTypeId, 0x0E, 0x74  // Battery
+        0x01, 0x67,           0x01, 0x10,  // Temperature
+        0x02, kBatteryTypeId, 0x0E, 0x74   // Battery
     };
 
     auto result = decoder_.decode(payload);
